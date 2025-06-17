@@ -1,6 +1,17 @@
 version: 0.2
 
 phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+  pre_build:
+    commands:
+      - echo "Starting build process"
+      - echo "Current branch information:"
+      - echo $CODEBUILD_WEBHOOK_BASE_REF
+      - echo $CODEBUILD_WEBHOOK_HEAD_REF
   build:
     commands:
-      - echo "Test build"
+      - echo "Building the application"
+      - mkdir -p build
+      - cp index.html build/
