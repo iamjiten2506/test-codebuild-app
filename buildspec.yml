@@ -1,17 +1,30 @@
 version: 0.2
-
 phases:
-  install:
-    runtime-versions:
-      nodejs: 18
   pre_build:
     commands:
-      - echo "Starting build process"
-      - echo "Current branch information:"
-      - echo $CODEBUILD_WEBHOOK_BASE_REF
-      - echo $CODEBUILD_WEBHOOK_HEAD_REF
+      - echo "Getting CodeArtifact authorization token"
+      - export CODEARTIFACT_AUTH_TOKEN=`aws codeartifact get-authorization-token --domain test-cb --query authorizationToken --output text`
+      - echo "Token obtained successfully"
   build:
     commands:
-      - echo "Building the application"
-      - mkdir -p build
-      - cp index.html build/
+      - echo "Building static binary artifact"
+      - mkdir -p artifacts
+      - echo "Static binary content version 1.0 - $(date)" > artifacts/static-binary.txt
+      - echo "Additional file for testing" > artifacts/readme.txt
+      - tar -czf static-binary-1.0.tar.gz artifacts/
+      - ls -la static-binary-1.0.tar.gz
+  post_build:
+    commands:
+      - echo "Uploading artifact to S3 for CodeArtifact"
+      - aws s3 cp static-binary-1.0.tar.gz s3://test-static-binaries-bucket/packages/static-binary/1.0/
+      - echo "Creating package metadata in CodeArtifact"
+      - |
+        aws codeartifact put-package-metadata \
+          --domain test-cb \
+          --repository test-repo-for-CodeArtifact \
+          --format generic \
+          --package static-binary \
+          --package-version "1.0" || echo "Package metadata creation failed or already exists"
+artifacts:
+  files:
+    - static-binary-1.0.tar.gz
