@@ -15,16 +15,19 @@ phases:
       - ls -la static-binary-1.0.tar.gz
   post_build:
     commands:
-      - echo "Uploading artifact to S3 for CodeArtifact"
-      - aws s3 cp static-binary-1.0.tar.gz s3://test-static-binaries-bucket/packages/static-binary/1.0/
-      - echo "Creating package metadata in CodeArtifact"
+      - echo "Uploading package to CodeArtifact"
       - |
-        aws codeartifact put-package-metadata \
+        aws codeartifact publish-package-version \
           --domain test-cb \
           --repository test-repo-for-CodeArtifact \
           --format generic \
           --package static-binary \
-          --package-version "1.0" || echo "Package metadata creation failed or already exists"
+          --package-version "1.0" \
+          --asset-content fileb://static-binary-1.0.tar.gz \
+          --asset-name "static-binary-1.0.tar.gz" \
+          --asset-sha256 $(sha256sum static-binary-1.0.tar.gz | cut -d' ' -f1) || echo "Package upload failed or already exists"
+      - echo "Also uploading to S3 as backup"
+      - aws s3 cp static-binary-1.0.tar.gz s3://test-static-binaries-bucket/packages/static-binary/1.0/
 artifacts:
   files:
     - static-binary-1.0.tar.gz
